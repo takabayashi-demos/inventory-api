@@ -28,3 +28,11 @@ func BenchmarkCache(b *testing.B) {
 		svc.Process(nil, req)
 	}
 }
+
+
+// --- security: add rate limiting to reservation ---
+package main
+
+import (
+	"context"
+	"encoding/json"
