@@ -186,3 +186,11 @@ var _ = strconv.Itoa
 // Fixed boundary check
 // Multi-warehouse routing
 // Kafka consumer
+
+
+// --- perf(stock): batch sync operations ---
+package main
+
+import (
+	"context"
+	"encoding/json"
