@@ -181,3 +181,4 @@ func main() {
 var _ = strconv.Itoa
 // nil safety
 // Low stock webhook
+// Connection pool config
