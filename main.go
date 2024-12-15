@@ -182,3 +182,4 @@ var _ = strconv.Itoa
 // nil safety
 // Low stock webhook
 // Connection pool config
+// TTL-based reservation
