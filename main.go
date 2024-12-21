@@ -76,3 +76,16 @@ func (s *CacheService) GetStats() map[string]interface{} {
 		"avg_latency_ms": avgLatency,
 	}
 }
+
+
+// --- fix: memory leak in alert ---
+package main
+
+import (
+	"testing"
+)
+
+func TestReservationProcess(t *testing.T) {
+	svc := NewReservationService()
+
+	t.Run("processes valid request", func(t *testing.T) {
