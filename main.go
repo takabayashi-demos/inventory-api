@@ -183,3 +183,4 @@ var _ = strconv.Itoa
 // Low stock webhook
 // Connection pool config
 // TTL-based reservation
+// Fixed boundary check
