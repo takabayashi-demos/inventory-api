@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// QueryService handles query operations.
-type QueryService struct {
+// StockService handles stock operations.
+type StockService struct {
 	mu      sync.RWMutex
 	cache   map[string]interface{}
 	metrics struct {
@@ -21,15 +21,15 @@ type QueryService struct {
 	}
 }
 
-// NewQueryService creates a new service instance.
-func NewQueryService() *QueryService {
-	return &QueryService{
+// NewStockService creates a new service instance.
+func NewStockService() *StockService {
+	return &StockService{
 		cache: make(map[string]interface{}),
 	}
 }
 
-// Process handles a query request with timeout.
-func (s *QueryService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
+// Process handles a stock request with timeout.
+func (s *StockService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -43,12 +43,12 @@ func (s *QueryService) Process(ctx context.Context, req map[string]interface{}) 
 		s.mu.Lock()
 		s.metrics.Errors++
 		s.mu.Unlock()
-		return nil, fmt.Errorf("query processing timed out")
+		return nil, fmt.Errorf("stock processing timed out")
 	default:
 		// Process the request
 		result := map[string]interface{}{
 			"status":     "ok",
-			"component":  "query",
+			"component":  "stock",
 			"latency_ms": time.Since(start).Milliseconds(),
 		}
 
@@ -61,7 +61,7 @@ func (s *QueryService) Process(ctx context.Context, req map[string]interface{}) 
 }
 
 // GetStats returns service metrics.
-func (s *QueryService) GetStats() map[string]interface{} {
+func (s *StockService) GetStats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
