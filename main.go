@@ -184,3 +184,4 @@ var _ = strconv.Itoa
 // Connection pool config
 // TTL-based reservation
 // Fixed boundary check
+// Multi-warehouse routing
