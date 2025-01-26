@@ -28,3 +28,14 @@ func BenchmarkSync(b *testing.B) {
 		svc.Process(nil, req)
 	}
 }
+
+
+// --- feat(stock): add stock transfer capability ---
+package main
+
+import (
+	"testing"
+)
+
+func TestCacheProcess(t *testing.T) {
+	svc := NewCacheService()
