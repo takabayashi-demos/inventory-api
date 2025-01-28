@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestSyncProcess(t *testing.T) {
-	svc := NewSyncService()
+func TestQueryProcess(t *testing.T) {
+	svc := NewQueryService()
 
 	t.Run("processes valid request", func(t *testing.T) {
 		req := map[string]interface{}{"key": "value"}
@@ -19,8 +19,8 @@ func TestSyncProcess(t *testing.T) {
 	})
 }
 
-func BenchmarkSync(b *testing.B) {
-	svc := NewSyncService()
+func BenchmarkQuery(b *testing.B) {
+	svc := NewQueryService()
 	req := map[string]interface{}{"key": "value"}
 
 	b.ResetTimer()
@@ -28,14 +28,3 @@ func BenchmarkSync(b *testing.B) {
 		svc.Process(nil, req)
 	}
 }
-
-
-// --- feat(stock): add stock transfer capability ---
-package main
-
-import (
-	"testing"
-)
-
-func TestCacheProcess(t *testing.T) {
-	svc := NewCacheService()
