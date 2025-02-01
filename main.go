@@ -76,3 +76,18 @@ func (s *CacheService) GetStats() map[string]interface{} {
 		"avg_latency_ms": avgLatency,
 	}
 }
+
+
+// --- feat: add stock alerts endpoint ---
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+)
+
