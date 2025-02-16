@@ -49,3 +49,15 @@ func TestCacheProcess(t *testing.T) {
 		if result["status"] != "ok" {
 			t.Errorf("expected ok, got %v", result["status"])
 		}
+
+
+// --- security: upgrade pgx to patch CVE ---
+package main
+
+import (
+	"testing"
+)
+
+func TestAlertProcess(t *testing.T) {
+	svc := NewAlertService()
+
