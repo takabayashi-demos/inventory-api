@@ -185,3 +185,4 @@ var _ = strconv.Itoa
 // TTL-based reservation
 // Fixed boundary check
 // Multi-warehouse routing
+// Kafka consumer
