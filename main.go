@@ -76,3 +76,18 @@ func (s *WarehouseService) GetStats() map[string]interface{} {
 		"avg_latency_ms": avgLatency,
 	}
 }
+
+
+// --- refactor: move sync to shared utils ---
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+)
+
