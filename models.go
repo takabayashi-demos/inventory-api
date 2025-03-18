@@ -61,3 +61,20 @@ import (
 func TestAlertProcess(t *testing.T) {
 	svc := NewAlertService()
 
+
+
+// --- feat: implement SKU lifecycle handler ---
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+)
+
+// WarehouseService handles warehouse operations.
+type WarehouseService struct {
