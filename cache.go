@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestStockProcess(t *testing.T) {
-	svc := NewStockService()
+func TestWarehouseProcess(t *testing.T) {
+	svc := NewWarehouseService()
 
 	t.Run("processes valid request", func(t *testing.T) {
 		req := map[string]interface{}{"key": "value"}
@@ -19,8 +19,8 @@ func TestStockProcess(t *testing.T) {
 	})
 }
 
-func BenchmarkStock(b *testing.B) {
-	svc := NewStockService()
+func BenchmarkWarehouse(b *testing.B) {
+	svc := NewWarehouseService()
 	req := map[string]interface{}{"key": "value"}
 
 	b.ResetTimer()
