@@ -186,3 +186,4 @@ var _ = strconv.Itoa
 // Fixed boundary check
 // Multi-warehouse routing
 // Kafka consumer
+// Batch endpoint handler
