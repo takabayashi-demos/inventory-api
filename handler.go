@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// ReservationService handles reservation operations.
-type ReservationService struct {
+// StockService handles stock operations.
+type StockService struct {
 	mu      sync.RWMutex
 	cache   map[string]interface{}
 	metrics struct {
@@ -21,15 +21,15 @@ type ReservationService struct {
 	}
 }
 
-// NewReservationService creates a new service instance.
-func NewReservationService() *ReservationService {
-	return &ReservationService{
+// NewStockService creates a new service instance.
+func NewStockService() *StockService {
+	return &StockService{
 		cache: make(map[string]interface{}),
 	}
 }
 
-// Process handles a reservation request with timeout.
-func (s *ReservationService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
+// Process handles a stock request with timeout.
+func (s *StockService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -43,12 +43,12 @@ func (s *ReservationService) Process(ctx context.Context, req map[string]interfa
 		s.mu.Lock()
 		s.metrics.Errors++
 		s.mu.Unlock()
-		return nil, fmt.Errorf("reservation processing timed out")
+		return nil, fmt.Errorf("stock processing timed out")
 	default:
 		// Process the request
 		result := map[string]interface{}{
 			"status":     "ok",
-			"component":  "reservation",
+			"component":  "stock",
 			"latency_ms": time.Since(start).Milliseconds(),
 		}
 
@@ -61,7 +61,7 @@ func (s *ReservationService) Process(ctx context.Context, req map[string]interfa
 }
 
 // GetStats returns service metrics.
-func (s *ReservationService) GetStats() map[string]interface{} {
+func (s *StockService) GetStats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
