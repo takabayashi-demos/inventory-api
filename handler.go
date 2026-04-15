@@ -1,30 +1,78 @@
 package main
 
 import (
-	"testing"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"sync"
+	"time"
 )
 
-func TestQueryProcess(t *testing.T) {
-	svc := NewQueryService()
-
-	t.Run("processes valid request", func(t *testing.T) {
-		req := map[string]interface{}{"key": "value"}
-		result, err := svc.Process(nil, req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if result["status"] != "ok" {
-			t.Errorf("expected ok, got %v", result["status"])
-		}
-	})
+// WarehouseService handles warehouse operations.
+type WarehouseService struct {
+	mu      sync.RWMutex
+	cache   map[string]interface{}
+	metrics struct {
+		Requests  int64
+		Errors    int64
+		LatencyMs float64
+	}
 }
 
-func BenchmarkQuery(b *testing.B) {
-	svc := NewQueryService()
-	req := map[string]interface{}{"key": "value"}
+// NewWarehouseService creates a new service instance.
+func NewWarehouseService() *WarehouseService {
+	return &WarehouseService{
+		cache: make(map[string]interface{}),
+	}
+}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		svc.Process(nil, req)
+// Process handles a warehouse request with timeout.
+func (s *WarehouseService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	s.mu.Lock()
+	s.metrics.Requests++
+	s.mu.Unlock()
+
+	select {
+	case <-ctx.Done():
+		s.mu.Lock()
+		s.metrics.Errors++
+		s.mu.Unlock()
+		return nil, fmt.Errorf("warehouse processing timed out")
+	default:
+		// Process the request
+		result := map[string]interface{}{
+			"status":     "ok",
+			"component":  "warehouse",
+			"latency_ms": time.Since(start).Milliseconds(),
+		}
+
+		s.mu.Lock()
+		s.metrics.LatencyMs += float64(time.Since(start).Milliseconds())
+		s.mu.Unlock()
+
+		return result, nil
+	}
+}
+
+// GetStats returns service metrics.
+func (s *WarehouseService) GetStats() map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	avgLatency := float64(0)
+	if s.metrics.Requests > 0 {
+		avgLatency = s.metrics.LatencyMs / float64(s.metrics.Requests)
+	}
+
+	return map[string]interface{}{
+		"requests":       s.metrics.Requests,
+		"errors":         s.metrics.Errors,
+		"avg_latency_ms": avgLatency,
 	}
 }
