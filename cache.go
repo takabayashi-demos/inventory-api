@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// CacheService handles cache operations.
-type CacheService struct {
+// WarehouseService handles warehouse operations.
+type WarehouseService struct {
 	mu      sync.RWMutex
 	cache   map[string]interface{}
 	metrics struct {
@@ -21,15 +21,15 @@ type CacheService struct {
 	}
 }
 
-// NewCacheService creates a new service instance.
-func NewCacheService() *CacheService {
-	return &CacheService{
+// NewWarehouseService creates a new service instance.
+func NewWarehouseService() *WarehouseService {
+	return &WarehouseService{
 		cache: make(map[string]interface{}),
 	}
 }
 
-// Process handles a cache request with timeout.
-func (s *CacheService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
+// Process handles a warehouse request with timeout.
+func (s *WarehouseService) Process(ctx context.Context, req map[string]interface{}) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -43,12 +43,12 @@ func (s *CacheService) Process(ctx context.Context, req map[string]interface{}) 
 		s.mu.Lock()
 		s.metrics.Errors++
 		s.mu.Unlock()
-		return nil, fmt.Errorf("cache processing timed out")
+		return nil, fmt.Errorf("warehouse processing timed out")
 	default:
 		// Process the request
 		result := map[string]interface{}{
 			"status":     "ok",
-			"component":  "cache",
+			"component":  "warehouse",
 			"latency_ms": time.Since(start).Milliseconds(),
 		}
 
@@ -61,7 +61,7 @@ func (s *CacheService) Process(ctx context.Context, req map[string]interface{}) 
 }
 
 // GetStats returns service metrics.
-func (s *CacheService) GetStats() map[string]interface{} {
+func (s *WarehouseService) GetStats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
