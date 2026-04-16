@@ -1,3 +1,3 @@
 module github.com/takabayashi-demos/inventory-api
 
-go 1.22.1
+go 1.22.0
