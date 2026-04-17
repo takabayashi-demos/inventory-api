@@ -2,8 +2,6 @@
 // Real-time inventory management with intentional issues.
 //
 // INTENTIONAL ISSUES (for demo):
-// - Off-by-one error in stock count (bug)
-// - No mutex on concurrent stock updates (race condition)
 // - Panic on nil map access (bug)
 // - Hardcoded DB credentials (vulnerability)
 package main
@@ -112,8 +110,7 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ❌ BUG: Off-by-one error (should be >= not >)
-	if product.Stock > req.Quantity {
+	if product.Stock >= req.Quantity {
 		product.Stock -= req.Quantity
 
 		// Simulate DB write latency
