@@ -2,8 +2,6 @@
 // Real-time inventory management with intentional issues.
 //
 // INTENTIONAL ISSUES (for demo):
-// - Off-by-one error in stock count (bug)
-// - No mutex on concurrent stock updates (race condition)
 // - Panic on nil map access (bug)
 // - Hardcoded DB credentials (vulnerability)
 package main
@@ -39,7 +37,6 @@ type Product struct {
 
 var (
 	inventory map[string]*Product
-	// ❌ BUG: mu declared but not always used - race condition
 	mu sync.Mutex
 )
 
@@ -104,15 +101,16 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	product, exists := inventory[req.SKU]
 	if !exists {
 		http.Error(w, `{"error":"product not found"}`, 404)
 		return
 	}
 
-	// ❌ BUG: No lock - race condition on concurrent reservations
-	// ❌ BUG: Off-by-one error (should be >= not >)
-	if product.Stock > req.Quantity {
+	if product.Stock >= req.Quantity {
 		product.Stock -= req.Quantity
 
 		// Simulate DB write latency
@@ -135,28 +133,10 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 func debugHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"db_host":     DB_HOST,
-		"db_user":     DB_USER,
-		"db_password": DB_PASSWORD,
-		"db_name":     DB_NAME,
+		"db_host": DB_HOST,
+		"db_user": DB_USER,
+		"db_name": DB_NAME,
 	})
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	totalStock := 0
-	for _, p := range inventory {
-		totalStock += p.Stock
-	}
-	fmt.Fprintf(w, `# HELP inventory_total_stock Total stock across all products
-# TYPE inventory_total_stock gauge
-inventory_total_stock %d
-# HELP inventory_products_total Total number of products
-# TYPE inventory_products_total gauge
-inventory_products_total %d
-# HELP inventory_service_up Service health
-# TYPE inventory_service_up gauge
-inventory_service_up 1
-`, totalStock, len(inventory))
 }
 
 func main() {
@@ -167,15 +147,11 @@ func main() {
 
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/ready", readyHandler)
-	http.HandleFunc("/api/v1/inventory", listInventoryHandler)
-	http.HandleFunc("/api/v1/inventory/stock", getStockHandler)
-	http.HandleFunc("/api/v1/inventory/reserve", reserveStockHandler)
-	http.HandleFunc("/debug/db", debugHandler)
-	http.HandleFunc("/metrics", metricsHandler)
+	http.HandleFunc("/api/inventory", listInventoryHandler)
+	http.HandleFunc("/api/stock", getStockHandler)
+	http.HandleFunc("/api/reserve", reserveStockHandler)
+	http.HandleFunc("/debug/config", debugHandler)
 
-	log.Printf("inventory-api starting on :%s", port)
+	log.Printf("Inventory API starting on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-// unused - suppress compiler warning
-var _ = strconv.Itoa
