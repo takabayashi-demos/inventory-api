@@ -3,6 +3,7 @@
 //
 // FIXED ISSUES:
 // - Removed hardcoded DB credentials (now using env vars)
+// - Removed debug endpoint exposing internal config
 //
 // REMAINING ISSUES (for demo):
 // - Off-by-one error in stock count (bug)
@@ -144,16 +145,6 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func debugHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"db_host":     DB_HOST,
-		"db_user":     DB_USER,
-		"db_password": DB_PASSWORD,
-		"db_name":     DB_NAME,
-	})
-}
-
 func main() {
 	port := getEnv("PORT", "8080")
 
@@ -162,7 +153,6 @@ func main() {
 	http.HandleFunc("/inventory", listInventoryHandler)
 	http.HandleFunc("/stock", getStockHandler)
 	http.HandleFunc("/reserve", reserveStockHandler)
-	http.HandleFunc("/debug", debugHandler)
 
 	log.Printf("Inventory API starting on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
