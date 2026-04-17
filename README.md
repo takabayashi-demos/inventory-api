@@ -1,23 +1,40 @@
-# inventory-api
+# Inventory API
 
-Real-time inventory management API
+Real-time inventory management service for Walmart platform.
 
-## Tech Stack
-- **Language**: go
-- **Team**: supply-chain
-- **Platform**: Walmart Global K8s
+## Configuration
 
-## Quick Start
+Required environment variables:
+
 ```bash
-docker build -t inventory-api:latest .
-docker run -p 8080:8080 inventory-api:latest
-curl http://localhost:8080/health
+DB_HOST=inventory-db.walmart.internal
+DB_USER=admin
+DB_PASSWORD=<secure-password>
+DB_NAME=inventory_prod
+PORT=8080  # optional, defaults to 8080
+```
+
+## Running
+
+```bash
+export DB_HOST=inventory-db.walmart.internal
+export DB_USER=admin
+export DB_PASSWORD=your-password-here
+export DB_NAME=inventory_prod
+
+go run main.go
 ```
 
 ## API Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /health | Health check |
-| GET | /ready | Readiness probe |
-| GET | /metrics | Prometheus metrics |
-## Inventory API Reference
+
+- `GET /health` - Health check
+- `GET /ready` - Readiness check
+- `GET /api/inventory` - List all products
+- `GET /api/stock?sku=SKU-001` - Get stock for SKU
+- `POST /api/reserve` - Reserve stock
+
+## Security
+
+- Database credentials must be provided via environment variables
+- Never commit credentials to version control
+- Use secrets management in production (Vault, AWS Secrets Manager, etc.)
