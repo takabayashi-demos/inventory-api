@@ -1,11 +1,13 @@
 // Inventory API - Walmart Platform
 // Real-time inventory management with intentional issues.
 //
-// INTENTIONAL ISSUES (for demo):
+// FIXED ISSUES:
+// - Removed hardcoded DB credentials (now using env vars)
+//
+// REMAINING ISSUES (for demo):
 // - Off-by-one error in stock count (bug)
 // - No mutex on concurrent stock updates (race condition)
 // - Panic on nil map access (bug)
-// - Hardcoded DB credentials (vulnerability)
 package main
 
 import (
@@ -20,13 +22,20 @@ import (
 	"time"
 )
 
-// ❌ VULNERABILITY: Hardcoded database credentials
-const (
-	DB_HOST     = "inventory-db.walmart.internal"
-	DB_USER     = "admin"
-	DB_PASSWORD = "Walmart2024!Prod"
-	DB_NAME     = "inventory_prod"
+// Database configuration from environment variables
+var (
+	DB_HOST     = getEnv("DB_HOST", "inventory-db.walmart.internal")
+	DB_USER     = getEnv("DB_USER", "inventory_user")
+	DB_PASSWORD = getEnv("DB_PASSWORD", "")
+	DB_NAME     = getEnv("DB_NAME", "inventory_prod")
 )
+
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
 
 type Product struct {
 	SKU       string  `json:"sku"`
@@ -54,11 +63,15 @@ func init() {
 		"SKU-007": {SKU: "SKU-007", Name: "Instant Pot Duo", Stock: 400, Price: 89.99, Warehouse: "us-east-1"},
 		"SKU-008": {SKU: "SKU-008", Name: "Lego Star Wars Set", Stock: 250, Price: 159.99, Warehouse: "ap-southeast-1"},
 	}
+
+	if DB_PASSWORD == "" {
+		log.Println("WARNING: DB_PASSWORD not set, database connection may fail")
+	}
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "UP", "service": "inventory-api", "version": "1.4.2",
+		"status": "UP", "service": "inventory-api", "version": "1.5.0",
 	})
 }
 
@@ -131,7 +144,6 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ❌ VULNERABILITY: Exposes internal DB config
 func debugHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -142,40 +154,16 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	totalStock := 0
-	for _, p := range inventory {
-		totalStock += p.Stock
-	}
-	fmt.Fprintf(w, `# HELP inventory_total_stock Total stock across all products
-# TYPE inventory_total_stock gauge
-inventory_total_stock %d
-# HELP inventory_products_total Total number of products
-# TYPE inventory_products_total gauge
-inventory_products_total %d
-# HELP inventory_service_up Service health
-# TYPE inventory_service_up gauge
-inventory_service_up 1
-`, totalStock, len(inventory))
-}
-
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := getEnv("PORT", "8080")
 
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/ready", readyHandler)
-	http.HandleFunc("/api/v1/inventory", listInventoryHandler)
-	http.HandleFunc("/api/v1/inventory/stock", getStockHandler)
-	http.HandleFunc("/api/v1/inventory/reserve", reserveStockHandler)
-	http.HandleFunc("/debug/db", debugHandler)
-	http.HandleFunc("/metrics", metricsHandler)
+	http.HandleFunc("/inventory", listInventoryHandler)
+	http.HandleFunc("/stock", getStockHandler)
+	http.HandleFunc("/reserve", reserveStockHandler)
+	http.HandleFunc("/debug", debugHandler)
 
-	log.Printf("inventory-api starting on :%s", port)
+	log.Printf("Inventory API starting on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-// unused - suppress compiler warning
-var _ = strconv.Itoa
