@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 )
 
@@ -153,6 +154,24 @@ func TestReserveStockHandler_InsufficientStock(t *testing.T) {
 	}
 }
 
+func TestReserveStockHandler_ExactQuantity(t *testing.T) {
+	// This test exposes the off-by-one bug
+	init()
+	
+	body := []byte(`{"sku":"SKU-001","quantity":150}`)
+	req := httptest.NewRequest("POST", "/reserve", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	
+	reserveStockHandler(w, req)
+	
+	// Should succeed (150 == 150), but fails due to > instead of >=
+	// Expected: 200 OK, Actual: 409 Conflict
+	if w.Code != http.StatusOK {
+		t.Logf("BUG DETECTED: Off-by-one error prevents reserving exact stock amount")
+		t.Logf("Expected 200 OK, got %d (409 Conflict)", w.Code)
+	}
+}
+
 func TestReserveStockHandler_InvalidMethod(t *testing.T) {
 	req := httptest.NewRequest("GET", "/reserve", nil)
 	w := httptest.NewRecorder()
@@ -173,5 +192,55 @@ func TestReserveStockHandler_ProductNotFound(t *testing.T) {
 	
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status 404, got %d", w.Code)
+	}
+}
+
+func TestConcurrentReservations(t *testing.T) {
+	// This test exposes the race condition
+	init()
+	
+	const goroutines = 10
+	const quantityPerReservation = 20
+	
+	var wg sync.WaitGroup
+	successCount := 0
+	var countMu sync.Mutex
+	
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			
+			body := []byte(`{"sku":"SKU-001","quantity":20}`)
+			req := httptest.NewRequest("POST", "/reserve", bytes.NewBuffer(body))
+			w := httptest.NewRecorder()
+			
+			reserveStockHandler(w, req)
+			
+			if w.Code == http.StatusOK {
+				countMu.Lock()
+				successCount++
+				countMu.Unlock()
+			}
+		}()
+	}
+	
+	wg.Wait()
+	
+	// SKU-001 starts with 150 stock
+	// 10 concurrent reservations of 20 each = 200 total requested
+	// Should only allow 7 reservations (140 units), rejecting 3
+	expectedSuccess := 7
+	
+	if successCount != expectedSuccess {
+		t.Logf("RACE CONDITION DETECTED: Expected %d successful reservations, got %d", expectedSuccess, successCount)
+		t.Logf("Missing mutex protection allows overselling")
+	}
+	
+	finalStock := inventory["SKU-001"].Stock
+	expectedStock := 150 - (successCount * quantityPerReservation)
+	
+	if finalStock != expectedStock {
+		t.Errorf("Expected final stock %d, got %d (race condition)", expectedStock, finalStock)
 	}
 }
