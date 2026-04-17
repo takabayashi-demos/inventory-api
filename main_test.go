@@ -91,3 +91,85 @@ func TestGetStockHandler_Success(t *testing.T) {
 		t.Errorf("expected stock 150, got %d", product.Stock)
 	}
 }
+
+func TestGetStockHandler_MissingSKU(t *testing.T) {
+	req := httptest.NewRequest("GET", "/stock", nil)
+	w := httptest.NewRecorder()
+
+	getStockHandler(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestGetStockHandler_NonexistentSKU(t *testing.T) {
+	// This test exposes the nil pointer bug
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic for nonexistent SKU, but didn't panic")
+		}
+	}()
+
+	req := httptest.NewRequest("GET", "/stock?sku=INVALID", nil)
+	w := httptest.NewRecorder()
+
+	getStockHandler(w, req)
+}
+
+func TestReserveStockHandler_Success(t *testing.T) {
+	body := bytes.NewBufferString(`{"sku":"SKU-001","quantity":10}`)
+	req := httptest.NewRequest("POST", "/reserve", body)
+	w := httptest.NewRecorder()
+
+	reserveStockHandler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	var resp map[string]interface{}
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	if resp["status"] != "reserved" {
+		t.Errorf("expected status reserved, got %s", resp["status"])
+	}
+	if int(resp["reserved"].(float64)) != 10 {
+		t.Errorf("expected reserved 10, got %v", resp["reserved"])
+	}
+}
+
+func TestReserveStockHandler_InsufficientStock(t *testing.T) {
+	body := bytes.NewBufferString(`{"sku":"SKU-005","quantity":1000}`)
+	req := httptest.NewRequest("POST", "/reserve", body)
+	w := httptest.NewRecorder()
+
+	reserveStockHandler(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("expected status 409, got %d", w.Code)
+	}
+}
+
+func TestReserveStockHandler_MethodNotAllowed(t *testing.T) {
+	req := httptest.NewRequest("GET", "/reserve", nil)
+	w := httptest.NewRecorder()
+
+	reserveStockHandler(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
+	}
+}
+
+func TestReserveStockHandler_ProductNotFound(t *testing.T) {
+	body := bytes.NewBufferString(`{"sku":"INVALID","quantity":10}`)
+	req := httptest.NewRequest("POST", "/reserve", body)
+	w := httptest.NewRecorder()
+
+	reserveStockHandler(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", w.Code)
+	}
+}
