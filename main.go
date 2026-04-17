@@ -85,8 +85,15 @@ func listInventoryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
+	// Parse warehouse filter
+	warehouseFilter := r.URL.Query().Get("warehouse")
+	
 	items := make([]*Product, 0)
 	for _, p := range inventory {
+		// Apply warehouse filter if provided
+		if warehouseFilter != "" && p.Warehouse != warehouseFilter {
+			continue
+		}
 		items = append(items, p)
 	}
 	
@@ -104,13 +111,19 @@ func listInventoryHandler(w http.ResponseWriter, r *http.Request) {
 		items = items[start:end]
 	}
 	
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	response := map[string]interface{}{
 		"items": items,
 		"total": total,
 		"page":  page,
 		"limit": limit,
 		"pages": (total + limit - 1) / limit,
-	})
+	}
+	
+	if warehouseFilter != "" {
+		response["warehouse"] = warehouseFilter
+	}
+	
+	json.NewEncoder(w).Encode(response)
 }
 
 func getStockHandler(w http.ResponseWriter, r *http.Request) {
