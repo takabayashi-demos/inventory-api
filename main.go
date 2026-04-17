@@ -68,13 +68,48 @@ func readyHandler(w http.ResponseWriter, r *http.Request) {
 
 func listInventoryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	
+	// Parse pagination parameters
+	page := 1
+	limit := 50
+	
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+	
 	items := make([]*Product, 0)
 	for _, p := range inventory {
 		items = append(items, p)
 	}
+	
+	// Calculate pagination
+	total := len(items)
+	start := (page - 1) * limit
+	end := start + limit
+	
+	if start >= total {
+		items = []*Product{}
+	} else {
+		if end > total {
+			end = total
+		}
+		items = items[start:end]
+	}
+	
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"items": items,
-		"total": len(items),
+		"total": total,
+		"page":  page,
+		"limit": limit,
+		"pages": (total + limit - 1) / limit,
 	})
 }
 
@@ -135,28 +170,10 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 func debugHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"db_host":     DB_HOST,
-		"db_user":     DB_USER,
-		"db_password": DB_PASSWORD,
-		"db_name":     DB_NAME,
+		"db_host": DB_HOST,
+		"db_user": DB_USER,
+		"db_name": DB_NAME,
 	})
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	totalStock := 0
-	for _, p := range inventory {
-		totalStock += p.Stock
-	}
-	fmt.Fprintf(w, `# HELP inventory_total_stock Total stock across all products
-# TYPE inventory_total_stock gauge
-inventory_total_stock %d
-# HELP inventory_products_total Total number of products
-# TYPE inventory_products_total gauge
-inventory_products_total %d
-# HELP inventory_service_up Service health
-# TYPE inventory_service_up gauge
-inventory_service_up 1
-`, totalStock, len(inventory))
 }
 
 func main() {
@@ -167,15 +184,11 @@ func main() {
 
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/ready", readyHandler)
-	http.HandleFunc("/api/v1/inventory", listInventoryHandler)
-	http.HandleFunc("/api/v1/inventory/stock", getStockHandler)
-	http.HandleFunc("/api/v1/inventory/reserve", reserveStockHandler)
-	http.HandleFunc("/debug/db", debugHandler)
-	http.HandleFunc("/metrics", metricsHandler)
+	http.HandleFunc("/inventory", listInventoryHandler)
+	http.HandleFunc("/stock", getStockHandler)
+	http.HandleFunc("/reserve", reserveStockHandler)
+	http.HandleFunc("/debug", debugHandler)
 
-	log.Printf("inventory-api starting on :%s", port)
+	log.Printf("Inventory API starting on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-// unused - suppress compiler warning
-var _ = strconv.Itoa
