@@ -5,7 +5,6 @@
 // - Off-by-one error in stock count (bug)
 // - No mutex on concurrent stock updates (race condition)
 // - Panic on nil map access (bug)
-// - Hardcoded DB credentials (vulnerability)
 package main
 
 import (
@@ -20,12 +19,11 @@ import (
 	"time"
 )
 
-// ❌ VULNERABILITY: Hardcoded database credentials
-const (
-	DB_HOST     = "inventory-db.walmart.internal"
-	DB_USER     = "admin"
-	DB_PASSWORD = "Walmart2024!Prod"
-	DB_NAME     = "inventory_prod"
+var (
+	dbHost     string
+	dbUser     string
+	dbPassword string
+	dbName     string
 )
 
 type Product struct {
@@ -44,6 +42,17 @@ var (
 )
 
 func init() {
+	// Load database configuration from environment
+	dbHost = getEnv("DB_HOST", "")
+	dbUser = getEnv("DB_USER", "")
+	dbPassword = getEnv("DB_PASSWORD", "")
+	dbName = getEnv("DB_NAME", "")
+
+	// Validate required environment variables
+	if dbHost == "" || dbUser == "" || dbPassword == "" || dbName == "" {
+		log.Fatal("Missing required environment variables: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME")
+	}
+
 	inventory = map[string]*Product{
 		"SKU-001": {SKU: "SKU-001", Name: "Samsung 65\" 4K TV", Stock: 150, Price: 599.99, Warehouse: "us-east-1"},
 		"SKU-002": {SKU: "SKU-002", Name: "Apple iPhone 15 Pro", Stock: 500, Price: 999.99, Warehouse: "us-east-1"},
@@ -54,6 +63,13 @@ func init() {
 		"SKU-007": {SKU: "SKU-007", Name: "Instant Pot Duo", Stock: 400, Price: 89.99, Warehouse: "us-east-1"},
 		"SKU-008": {SKU: "SKU-008", Name: "Lego Star Wars Set", Stock: 250, Price: 159.99, Warehouse: "ap-southeast-1"},
 	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -131,51 +147,16 @@ func reserveStockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ❌ VULNERABILITY: Exposes internal DB config
-func debugHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"db_host":     DB_HOST,
-		"db_user":     DB_USER,
-		"db_password": DB_PASSWORD,
-		"db_name":     DB_NAME,
-	})
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	totalStock := 0
-	for _, p := range inventory {
-		totalStock += p.Stock
-	}
-	fmt.Fprintf(w, `# HELP inventory_total_stock Total stock across all products
-# TYPE inventory_total_stock gauge
-inventory_total_stock %d
-# HELP inventory_products_total Total number of products
-# TYPE inventory_products_total gauge
-inventory_products_total %d
-# HELP inventory_service_up Service health
-# TYPE inventory_service_up gauge
-inventory_service_up 1
-`, totalStock, len(inventory))
-}
-
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := getEnv("PORT", "8080")
 
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/ready", readyHandler)
-	http.HandleFunc("/api/v1/inventory", listInventoryHandler)
-	http.HandleFunc("/api/v1/inventory/stock", getStockHandler)
-	http.HandleFunc("/api/v1/inventory/reserve", reserveStockHandler)
-	http.HandleFunc("/debug/db", debugHandler)
-	http.HandleFunc("/metrics", metricsHandler)
+	http.HandleFunc("/api/inventory", listInventoryHandler)
+	http.HandleFunc("/api/stock", getStockHandler)
+	http.HandleFunc("/api/reserve", reserveStockHandler)
 
-	log.Printf("inventory-api starting on :%s", port)
+	log.Printf("inventory-api starting on port %s\n", port)
+	log.Printf("Connected to database: %s@%s/%s\n", dbUser, dbHost, dbName)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-// unused - suppress compiler warning
-var _ = strconv.Itoa
